@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Photo Kiosk - Midtrans + 4 Shots</title>
+  <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="Mid-client-fC8iQW7BR7LF8Z1T"></script>
+  <style>
+    :root { --bg: #0b0b0f; --primary: #6366f1; --glass: rgba(255,255,255,0.08); --text: #fff; --radius: 20px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+    body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: manipulation; }
+    
+    .screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .screen.active { display: flex; }
+
+    /* Live View */
+    #live-feed { width: 85vw; max-width: 750px; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--radius); background: #1a1a1f; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
+    
+    /* Countdown */
+    #countdown { position: absolute; font-size: 18vw; font-weight: 800; color: var(--primary); text-shadow: 0 0 40px var(--primary); opacity: 0; transition: 0.2s; pointer-events: none; }
+    
+    /* Buttons */
+    .btn { padding: 16px 32px; font-size: 1.1rem; border: none; border-radius: 50px; background: var(--primary); color: white; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.4); transition: 0.1s; margin: 8px; }
+    .btn:active { transform: scale(0.95); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.secondary { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+
+    /* Editor & Borders */
+    .border-grid { display: flex; gap: 12px; margin: 15px 0; flex-wrap: wrap; justify-content: center; }
+    .border-opt { width: 60px; height: 60px; border-radius: 12px; background: #222; border: 2px solid transparent; cursor: pointer; object-fit: cover; }
+    .border-opt.selected { border-color: var(--primary); transform: scale(1.1); }
+
+    /* Canvas Preview */
+    #final-canvas { max-width: 90vw; max-height: 60vh; border-radius: 16px; box-shadow: 0 0 25px rgba(0,0,0,0.7); }
+
+    .status { position: absolute; top: 15px; font-size: 0.9rem; opacity: 0.7; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="status" id="status">Menunggu pembayaran...</div>
+
+  <!-- 1. Payment Screen -->
+  <div id="screen-payment" class="screen active">
+    <h2 style="margin-bottom: 10px;">📸 Self Photo Booth</h2>
+    <p style="opacity: 0.7; margin-bottom: 20px;">4 Foto + Border Kustom | Rp 20.000</p>
+    <button class="btn" id="btn-pay">💳 BAYAR SEKARANG</button>
+  </div>
+
+  <!-- 2. Camera Screen -->
+  <div id="screen-camera" class="screen">
+    <img id="live-feed" src="" alt="Live Camera">
+    <div id="countdown"></div>
+    <div style="position: absolute; bottom: 40px;">
+      <button class="btn" id="btn-start-capture" disabled> MULAI SESI</button>
+    </div>
+  </div>
+
+  <!-- 3. Editor Screen -->
+  <div id="screen-editor" class="screen">
+    <h3 style="margin-bottom: 10px;">Pilih Border</h3>
+    <div class="border-grid" id="border-grid">
+      <!-- Borders akan di-generate JS -->
+    </div>
+    <canvas id="final-canvas" width="1200" height="1600"></canvas>
+    <div style="margin-top: 15px;">
+      <button class="btn secondary" id="btn-retake">🔄 Ulangi Sesi</button>
+      <button class="btn" id="btn-download">💾 DOWNLOAD</button>
+      <button class="btn secondary" id="btn-print">️ CETAK</button>
+    </div>
+  </div>
+
+  <script>
+    // ⚙️ KONFIGURASI
+    const CAMERA_IP = '192.168.206.45'; // Ganti IP HP
+    const BASE_URL = `http://${CAMERA_IP}:8080`;
+    const PAYMENT_API = 'https://photobooth-payment.vercel.app/api/create-transaction'; // Sesuaikan IP server payment
+
+    // State
+    let photos = [];
+    let currentPhotoIndex = 0;
+    let selectedBorderUrl = null;
+    const MAX_PHOTOS = 4;
+    const BORDERS = [
+      { name: 'Minimalis', url: 'https://via.placeholder.com/1200x1600/000000/FFFFFF?text=Border+1' },
+      { name: 'Vintage', url: 'https://via.placeholder.com/1200x1600/3E2723/FFFFFF?text=Border+2' },
+      { name: 'Neon', url: 'https://via.placeholder.com/1200x1600/00E5FF/000000?text=Border+3' }
+    ];
+
+    // DOM
+    const screens = { payment: document.getElementById('screen-payment'), camera: document.getElementById('screen-camera'), editor: document.getElementById('screen-editor') };
+    const statusEl = document.getElementById('status');
+    const liveFeed = document.getElementById('live-feed');
+    const countdownEl = document.getElementById('countdown');
+    const btnPay = document.getElementById('btn-pay');
+    const btnStart = document.getElementById('btn-start-capture');
+    const btnDownload = document.getElementById('btn-download');
+    const btnPrint = document.getElementById('btn-print');
+    const btnRetake = document.getElementById('btn-retake');
+    const borderGrid = document.getElementById('border-grid');
+    const canvas = document.getElementById('final-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Init
+    liveFeed.src = `${BASE_URL}/video`;
+    liveFeed.onerror = () => liveFeed.src = 'image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%231a1a1f" width="400" height="300"/><text x="50%" y="50%" fill="%23555" text-anchor="middle">Kamera Offline</text></svg>';
+    renderBorders();
+
+    // Switch Screen
+    function showScreen(name) {
+      Object.values(screens).forEach(s => s.classList.remove('active'));
+      screens[name].classList.add('active');
+    }
+
+    // Render Border Options
+    function renderBorders() {
+      borderGrid.innerHTML = '';
+      BORDERS.forEach((b, i) => {
+        const img = document.createElement('img');
+        img.src = b.url;
+        img.className = 'border-opt' + (i === 0 ? ' selected' : '');
+        img.onclick = () => {
+          document.querySelectorAll('.border-opt').forEach(el => el.classList.remove('selected'));
+          img.classList.add('selected');
+          selectedBorderUrl = b.url;
+          compositeCanvas();
+        };
+        borderGrid.appendChild(img);
+      });
+      selectedBorderUrl = BORDERS[0].url;
+    }
+
+    // Payment
+    btnPay.addEventListener('click', async () => {
+      statusEl.textContent = '⏳ Menghubungi Midtrans...';
+      try {
+        const res = await fetch(PAYMENT_API, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (data.token) {
+          window.snap.pay(data.token, {
+            onSuccess: (result) => {
+              statusEl.textContent = '✅ Pembayaran Berhasil!';
+              btnStart.disabled = false;
+              showScreen('camera');
+            },
+            onPending: () => statusEl.textContent = '⏳ Menunggu pembayaran...',
+            onError: (err) => {
+              statusEl.textContent = '❌ Gagal bayar: ' + err.status_message;
+              btnPay.disabled = false;
+            },
+            onClose: () => {
+              if (photos.length === 0) statusEl.textContent = 'Pembatalan. Silakan bayar ulang.';
+            }
+          });
+        }
+      } catch (e) {
+        statusEl.textContent = '⚠️ Server payment tidak terhubung. Jalankan payment-server.js';
+      }
+    });
+
+    // Capture 4 Photos
+    btnStart.addEventListener('click', async () => {
+      btnStart.disabled = true;
+      photos = [];
+      currentPhotoIndex = 0;
+      
+      for (let i = 0; i < MAX_PHOTOS; i++) {
+        statusEl.textContent = `📸 Foto ${i + 1} dari ${MAX_PHOTOS}`;
+        await runCountdown();
+        await takePhoto();
+      }
+      
+      statusEl.textContent = '✅ 4 Foto Selesai! Mengolah...';
+      await compositeCanvas();
+      showScreen('editor');
+    });
+
+    async function runCountdown() {
+      for (let n = 3; n >= 0; n--) {
+        countdownEl.textContent = n === 0 ? '📸' : n;
+        countdownEl.style.opacity = '1';
+        countdownEl.style.transform = 'scale(1.2)';
+        await sleep(300);
+        countdownEl.style.transform = 'scale(1)';
+        await sleep(700);
+        countdownEl.style.opacity = '0';
+      }
+    }
+
+    async function takePhoto() {
+      try {
+        await fetch(`${BASE_URL}/shutter`, { method: 'GET', mode: 'no-cors' });
+        await sleep(1500);
+        const imgSrc = `${BASE_URL}/shot.jpg?t=${Date.now()}`;
+        photos.push(imgSrc);
+      } catch (e) {
+        statusEl.textContent = '⚠️ Gagal jepret. Cek koneksi kamera.';
+      }
+    }
+
+    // Canvas Composition
+    async function compositeCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Layout 2x2 Grid
+      const pad = 40, gap = 20, topMargin = 60;
+      const col = 2, row = 2;
+      const imgW = (canvas.width - pad * 2 - gap) / 2;
+      const imgH = imgW * (3 / 4); // 4:3 ratio
+
+      const loadedImgs = await Promise.all(photos.map(src => loadImage(src)));
+
+      for (let i = 0; i < 4; i++) {
+        const r = Math.floor(i / 2), c = i % 2;
+        const x = pad + c * (imgW + gap);
+        const y = topMargin + r * (imgH + gap);
+        ctx.drawImage(loadedImgs[i], x, y, imgW, imgH);
+      }
+
+      // Draw Border Overlay
+      if (selectedBorderUrl) {
+        const borderImg = await loadImage(selectedBorderUrl);
+        ctx.drawImage(borderImg, 0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Gagal load image'));
+        img.src = src;
+      });
+    }
+
+    // Download
+    btnDownload.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = `photobooth_${Date.now()}.jpg`;
+      link.href = canvas.toDataURL('image/jpeg', 0.9);
+      link.click();
+      statusEl.textContent = '💾 Foto tersimpan di Downloads!';
+    });
+
+    // Print
+    btnPrint.addEventListener('click', () => {
+      const win = window.open('', '_blank');
+      win.document.write(`<img src="${canvas.toDataURL('image/jpeg', 0.9)}" style="max-width:100%;height:auto;">`);
+      win.document.close();
+      setTimeout(() => { win.print(); win.close(); }, 500);
+    });
+
+    // Retake
+    btnRetake.addEventListener('click', () => {
+      photos = [];
+      currentPhotoIndex = 0;
+      btnStart.disabled = false;
+      showScreen('camera');
+      statusEl.textContent = 'Siap sesi baru.';
+    });
+
+    function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+  </script>
+</body>
+</html>
