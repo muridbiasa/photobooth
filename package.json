@@ -1,7 +1,12 @@
 {
-  "name": "photobooth-payment",
+  "name": "photobooth-midtrans",
   "version": "1.0.0",
   "type": "module",
+  "description": "Self Photo Booth dengan Midtrans Payment",
+  "main": "api/create-transaction.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
   "dependencies": {
     "midtrans-client": "^1.4.2"
   }

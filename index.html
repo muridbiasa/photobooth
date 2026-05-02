@@ -3,96 +3,262 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Photo Kiosk - Midtrans + 4 Shots</title>
+  <title>Self Photo Booth - Midtrans</title>
   <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="Mid-client-fC8iQW7BR7LF8Z1T"></script>
   <style>
-    :root { --bg: #0b0b0f; --primary: #6366f1; --glass: rgba(255,255,255,0.08); --text: #fff; --radius: 20px; }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-    body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: manipulation; }
+    :root {
+      --bg: #0b0b0f;
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --glass: rgba(255,255,255,0.08);
+      --text: #ffffff;
+      --radius: 20px;
+    }
     
-    .screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-    .screen.active { display: flex; }
-
-    /* Live View */
-    #live-feed { width: 85vw; max-width: 750px; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--radius); background: #1a1a1f; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
     
-    /* Countdown */
-    #countdown { position: absolute; font-size: 18vw; font-weight: 800; color: var(--primary); text-shadow: 0 0 40px var(--primary); opacity: 0; transition: 0.2s; pointer-events: none; }
-    
-    /* Buttons */
-    .btn { padding: 16px 32px; font-size: 1.1rem; border: none; border-radius: 50px; background: var(--primary); color: white; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.4); transition: 0.1s; margin: 8px; }
-    .btn:active { transform: scale(0.95); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn.secondary { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+    }
 
-    /* Editor & Borders */
-    .border-grid { display: flex; gap: 12px; margin: 15px 0; flex-wrap: wrap; justify-content: center; }
-    .border-opt { width: 60px; height: 60px; border-radius: 12px; background: #222; border: 2px solid transparent; cursor: pointer; object-fit: cover; }
-    .border-opt.selected { border-color: var(--primary); transform: scale(1.1); }
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: var(--bg);
+    }
 
-    /* Canvas Preview */
-    #final-canvas { max-width: 90vw; max-height: 60vh; border-radius: 16px; box-shadow: 0 0 25px rgba(0,0,0,0.7); }
+    .screen.active {
+      display: flex;
+    }
 
-    .status { position: absolute; top: 15px; font-size: 0.9rem; opacity: 0.7; }
-    .hidden { display: none !important; }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      opacity: 0.7;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    #live-feed {
+      width: 85vw;
+      max-width: 750px;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      border-radius: var(--radius);
+      background: #1a1a1f;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+
+    #countdown {
+      position: absolute;
+      font-size: 18vw;
+      font-weight: 800;
+      color: var(--primary);
+      text-shadow: 0 0 40px var(--primary);
+      opacity: 0;
+      transition: opacity 0.15s, transform 0.3s;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .btn {
+      padding: 18px 40px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 50px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(99,102,241,0.4);
+      transition: all 0.2s;
+      margin: 10px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.6);
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn.secondary {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .border-grid {
+      display: flex;
+      gap: 12px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .border-opt {
+      width: 70px;
+      height: 70px;
+      border-radius: 12px;
+      background: #222;
+      border: 3px solid transparent;
+      cursor: pointer;
+      object-fit: cover;
+      transition: all 0.2s;
+    }
+
+    .border-opt:hover {
+      transform: scale(1.05);
+    }
+
+    .border-opt.selected {
+      border-color: var(--primary);
+      transform: scale(1.1);
+    }
+
+    #final-canvas {
+      max-width: 90vw;
+      max-height: 60vh;
+      border-radius: 16px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.7);
+      background: white;
+    }
+
+    .status {
+      position: absolute;
+      top: 20px;
+      font-size: 1rem;
+      opacity: 0.8;
+      text-align: center;
+      padding: 10px 20px;
+      background: var(--glass);
+      border-radius: 50px;
+      backdrop-filter: blur(10px);
+    }
+
+    .error-placeholder {
+      width: 85vw;
+      max-width: 750px;
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a1f;
+      border-radius: var(--radius);
+      color: #666;
+      font-size: 1.2rem;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 40px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 2rem; }
+      .btn { padding: 14px 30px; font-size: 1rem; }
+    }
   </style>
 </head>
 <body>
-  <div class="status" id="status">Menunggu pembayaran...</div>
+  <div class="status" id="status">💳 Siap untuk pembayaran</div>
 
-  <!-- 1. Payment Screen -->
+  <!-- SCREEN 1: PAYMENT -->
   <div id="screen-payment" class="screen active">
-    <h2 style="margin-bottom: 10px;">📸 Self Photo Booth</h2>
-    <p style="opacity: 0.7; margin-bottom: 20px;">4 Foto + Border Kustom | Rp 20.000</p>
+    <h1>📸 Self Photo Booth</h1>
+    <p class="subtitle">4 Foto + Border Kustom | Rp 20.000</p>
     <button class="btn" id="btn-pay">💳 BAYAR SEKARANG</button>
+    <button class="btn secondary" id="btn-demo" style="margin-top: 15px; font-size: 0.9rem;">🧪 Mode Demo (Skip Payment)</button>
   </div>
 
-  <!-- 2. Camera Screen -->
+  <!-- SCREEN 2: CAMERA -->
   <div id="screen-camera" class="screen">
     <img id="live-feed" src="" alt="Live Camera">
     <div id="countdown"></div>
-    <div style="position: absolute; bottom: 40px;">
-      <button class="btn" id="btn-start-capture" disabled> MULAI SESI</button>
+    <div class="controls">
+      <button class="btn" id="btn-start-capture" disabled>🎬 MULAI SESI FOTO</button>
     </div>
   </div>
 
-  <!-- 3. Editor Screen -->
+  <!-- SCREEN 3: EDITOR -->
   <div id="screen-editor" class="screen">
-    <h3 style="margin-bottom: 10px;">Pilih Border</h3>
+    <h2 style="margin-bottom: 10px;">✨ Pilih Border</h2>
     <div class="border-grid" id="border-grid">
-      <!-- Borders akan di-generate JS -->
+      <!-- Borders akan di-generate oleh JavaScript -->
     </div>
     <canvas id="final-canvas" width="1200" height="1600"></canvas>
-    <div style="margin-top: 15px;">
-      <button class="btn secondary" id="btn-retake">🔄 Ulangi Sesi</button>
+    <div class="controls">
+      <button class="btn secondary" id="btn-retake">🔄 Ulangi</button>
       <button class="btn" id="btn-download">💾 DOWNLOAD</button>
-      <button class="btn secondary" id="btn-print">️ CETAK</button>
+      <button class="btn secondary" id="btn-print">🖨️ CETAK</button>
     </div>
   </div>
 
   <script>
-    // ⚙️ KONFIGURASI
-    const CAMERA_IP = '192.168.206.45'; // Ganti IP HP
+    // ==================== KONFIGURASI ====================
+    const CAMERA_IP = '192.168.206.45'; // GANTI dengan IP HP kamu
     const BASE_URL = `http://${CAMERA_IP}:8080`;
-    const PAYMENT_API = 'https://photobooth-five-indol.vercel.app/payment-server';// Sesuaikan IP server payment
-
-    // State
+    const PAYMENT_API = 'https://photobooth-five-indol.vercel.app/api/create-transaction'; // URL Vercel kamu
+    
+    // ==================== STATE ====================
     let photos = [];
-    let currentPhotoIndex = 0;
     let selectedBorderUrl = null;
     const MAX_PHOTOS = 4;
+    
+    // Border options (gunakan URL gambar yang valid atau base64)
     const BORDERS = [
-      { name: 'Minimalis', url: 'https://via.placeholder.com/1200x1600/000000/FFFFFF?text=Border+1' },
-      { name: 'Vintage', url: 'https://via.placeholder.com/1200x1600/3E2723/FFFFFF?text=Border+2' },
-      { name: 'Neon', url: 'https://via.placeholder.com/1200x1600/00E5FF/000000?text=Border+3' }
+      { name: 'Classic', color: '#2d3748' },
+      { name: 'Vintage', color: '#744210' },
+      { name: 'Modern', color: '#4a5568' },
+      { name: 'Elegant', color: '#1a202c' }
     ];
 
-    // DOM
-    const screens = { payment: document.getElementById('screen-payment'), camera: document.getElementById('screen-camera'), editor: document.getElementById('screen-editor') };
+    // ==================== DOM ELEMENTS ====================
+    const screens = {
+      payment: document.getElementById('screen-payment'),
+      camera: document.getElementById('screen-camera'),
+      editor: document.getElementById('screen-editor')
+    };
     const statusEl = document.getElementById('status');
     const liveFeed = document.getElementById('live-feed');
     const countdownEl = document.getElementById('countdown');
     const btnPay = document.getElementById('btn-pay');
+    const btnDemo = document.getElementById('btn-demo');
     const btnStart = document.getElementById('btn-start-capture');
     const btnDownload = document.getElementById('btn-download');
     const btnPrint = document.getElementById('btn-print');
@@ -101,85 +267,127 @@
     const canvas = document.getElementById('final-canvas');
     const ctx = canvas.getContext('2d');
 
-    // Init
-    liveFeed.src = `${BASE_URL}/video`;
-    liveFeed.onerror = () => liveFeed.src = 'image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%231a1a1f" width="400" height="300"/><text x="50%" y="50%" fill="%23555" text-anchor="middle">Kamera Offline</text></svg>';
-    renderBorders();
+    // ==================== INIT ====================
+    function init() {
+      // Load live feed
+      liveFeed.src = `${BASE_URL}/video`;
+      liveFeed.onerror = () => {
+        liveFeed.style.display = 'none';
+        const placeholder = document.createElement('div');
+        placeholder.className = 'error-placeholder';
+        placeholder.textContent = '📷 Kamera tidak terdeteksi. Pastikan HP dan tablet dalam satu WiFi.';
+        liveFeed.parentNode.insertBefore(placeholder, liveFeed.nextSibling);
+      };
 
-    // Switch Screen
-    function showScreen(name) {
-      Object.values(screens).forEach(s => s.classList.remove('active'));
-      screens[name].classList.add('active');
+      renderBorders();
+      setupEventListeners();
     }
 
-    // Render Border Options
+    // ==================== BORDER RENDERER ====================
     function renderBorders() {
       borderGrid.innerHTML = '';
-      BORDERS.forEach((b, i) => {
-        const img = document.createElement('img');
-        img.src = b.url;
-        img.className = 'border-opt' + (i === 0 ? ' selected' : '');
-        img.onclick = () => {
-          document.querySelectorAll('.border-opt').forEach(el => el.classList.remove('selected'));
-          img.classList.add('selected');
-          selectedBorderUrl = b.url;
-          compositeCanvas();
-        };
-        borderGrid.appendChild(img);
+      BORDERS.forEach((border, index) => {
+        const div = document.createElement('div');
+        div.className = 'border-opt' + (index === 0 ? ' selected' : '');
+        div.style.background = border.color;
+        div.title = border.name;
+        div.onclick = () => selectBorder(border, div);
+        borderGrid.appendChild(div);
       });
-      selectedBorderUrl = BORDERS[0].url;
+      selectedBorderUrl = BORDERS[0];
     }
 
-    // Payment
-    btnPay.addEventListener('click', async () => {
-      statusEl.textContent = '⏳ Menghubungi Midtrans...';
+    function selectBorder(border, element) {
+      document.querySelectorAll('.border-opt').forEach(el => el.classList.remove('selected'));
+      element.classList.add('selected');
+      selectedBorderUrl = border;
+      compositeCanvas();
+    }
+
+    // ==================== NAVIGATION ====================
+    function showScreen(screenName) {
+      Object.values(screens).forEach(s => s.classList.remove('active'));
+      screens[screenName].classList.add('active');
+    }
+
+    // ==================== PAYMENT ====================
+    async function handlePayment() {
+      statusEl.textContent = '⏳ Menghubungi payment gateway...';
+      btnPay.disabled = true;
+
       try {
-        const res = await fetch(PAYMENT_API, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-        const data = await res.json();
-        if (data.token) {
+        const response = await fetch(PAYMENT_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors'
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.token) {
+          // Snap Midtrans
           window.snap.pay(data.token, {
             onSuccess: (result) => {
-              statusEl.textContent = '✅ Pembayaran Berhasil!';
-              btnStart.disabled = false;
-              showScreen('camera');
+              statusEl.textContent = '✅ Pembayaran berhasil!';
+              setTimeout(() => {
+                showScreen('camera');
+                btnStart.disabled = false;
+                statusEl.textContent = '📸 Siap mengambil foto';
+              }, 1000);
             },
-            onPending: () => statusEl.textContent = '⏳ Menunggu pembayaran...',
+            onPending: () => {
+              statusEl.textContent = '⏳ Menunggu pembayaran...';
+            },
             onError: (err) => {
-              statusEl.textContent = '❌ Gagal bayar: ' + err.status_message;
+              statusEl.textContent = `❌ ${err.status_message || 'Pembayaran gagal'}`;
               btnPay.disabled = false;
             },
             onClose: () => {
-              if (photos.length === 0) statusEl.textContent = 'Pembatalan. Silakan bayar ulang.';
+              statusEl.textContent = '❌ Pembayaran dibatalkan';
+              btnPay.disabled = false;
             }
           });
+        } else {
+          throw new Error('Token tidak diterima');
         }
-      } catch (e) {
-        statusEl.textContent = '⚠️ Server payment tidak terhubung. Jalankan payment-server.js';
-      }
-    });
 
-    // Capture 4 Photos
-    btnStart.addEventListener('click', async () => {
+      } catch (error) {
+        console.error('Payment error:', error);
+        statusEl.textContent = `⚠️ ${error.message}`;
+        btnPay.disabled = false;
+      }
+    }
+
+    // ==================== CAPTURE ====================
+    async function startCaptureSession() {
       btnStart.disabled = true;
       photos = [];
-      currentPhotoIndex = 0;
       
+      statusEl.textContent = '📸 Memulai sesi foto...';
+
       for (let i = 0; i < MAX_PHOTOS; i++) {
         statusEl.textContent = `📸 Foto ${i + 1} dari ${MAX_PHOTOS}`;
         await runCountdown();
         await takePhoto();
+        await sleep(1000);
       }
-      
-      statusEl.textContent = '✅ 4 Foto Selesai! Mengolah...';
+
+      statusEl.textContent = '✅ Semua foto diambil! Membuat komposisi...';
+      await sleep(500);
       await compositeCanvas();
       showScreen('editor');
-    });
+      statusEl.textContent = '✨ Pilih border dan download!';
+    }
 
     async function runCountdown() {
-      for (let n = 3; n >= 0; n--) {
-        countdownEl.textContent = n === 0 ? '📸' : n;
+      for (let i = 3; i >= 0; i--) {
+        countdownEl.textContent = i === 0 ? '📸' : i;
         countdownEl.style.opacity = '1';
-        countdownEl.style.transform = 'scale(1.2)';
+        countdownEl.style.transform = 'scale(1.3)';
         await sleep(300);
         countdownEl.style.transform = 'scale(1)';
         await sleep(700);
@@ -189,80 +397,157 @@
 
     async function takePhoto() {
       try {
-        await fetch(`${BASE_URL}/shutter`, { method: 'GET', mode: 'no-cors' });
+        // Trigger shutter
+        await fetch(`${BASE_URL}/shutter`, { 
+          method: 'GET', 
+          mode: 'no-cors',
+          cache: 'no-store'
+        });
+        
         await sleep(1500);
-        const imgSrc = `${BASE_URL}/shot.jpg?t=${Date.now()}`;
-        photos.push(imgSrc);
-      } catch (e) {
-        statusEl.textContent = '⚠️ Gagal jepret. Cek koneksi kamera.';
+        
+        // Ambil foto dengan cache buster
+        const photoUrl = `${BASE_URL}/shot.jpg?t=${Date.now()}`;
+        photos.push(photoUrl);
+        
+      } catch (error) {
+        console.error('Capture error:', error);
+        statusEl.textContent = '⚠️ Gagal mengambil foto';
       }
     }
 
-    // Canvas Composition
+    // ==================== CANVAS COMPOSITE ====================
     async function compositeCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Clear canvas
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Layout 2x2 Grid
-      const pad = 40, gap = 20, topMargin = 60;
-      const col = 2, row = 2;
-      const imgW = (canvas.width - pad * 2 - gap) / 2;
-      const imgH = imgW * (3 / 4); // 4:3 ratio
+      // Grid layout 2x2
+      const padding = 50;
+      const gap = 30;
+      const topMargin = 80;
+      const photoWidth = (canvas.width - (padding * 2) - gap) / 2;
+      const photoHeight = photoWidth * 0.75; // 4:3 aspect ratio
 
-      const loadedImgs = await Promise.all(photos.map(src => loadImage(src)));
+      // Load dan draw photos
+      for (let i = 0; i < photos.length; i++) {
+        const row = Math.floor(i / 2);
+        const col = i % 2;
+        const x = padding + col * (photoWidth + gap);
+        const y = topMargin + row * (photoHeight + gap);
 
-      for (let i = 0; i < 4; i++) {
-        const r = Math.floor(i / 2), c = i % 2;
-        const x = pad + c * (imgW + gap);
-        const y = topMargin + r * (imgH + gap);
-        ctx.drawImage(loadedImgs[i], x, y, imgW, imgH);
+        try {
+          const img = await loadImage(photos[i]);
+          ctx.drawImage(img, x, y, photoWidth, photoHeight);
+        } catch (error) {
+          console.error('Failed to load photo:', error);
+          // Draw placeholder
+          ctx.fillStyle = '#ddd';
+          ctx.fillRect(x, y, photoWidth, photoHeight);
+          ctx.fillStyle = '#999';
+          ctx.font = '20px Arial';
+          ctx.fillText(`Photo ${i + 1}`, x + 20, y + photoHeight/2);
+        }
       }
 
-      // Draw Border Overlay
+      // Draw border overlay (simple colored frame)
       if (selectedBorderUrl) {
-        const borderImg = await loadImage(selectedBorderUrl);
-        ctx.drawImage(borderImg, 0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = selectedBorderUrl.color;
+        ctx.lineWidth = 40;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        
+        // Add text label
+        ctx.fillStyle = selectedBorderUrl.color;
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(selectedBorderUrl.name, canvas.width/2, canvas.height - 30);
       }
     }
 
     function loadImage(src) {
       return new Promise((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = 'Anonymous';
+        img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('Gagal load image'));
+        img.onerror = () => reject(new Error('Failed to load image'));
         img.src = src;
       });
     }
 
-    // Download
-    btnDownload.addEventListener('click', () => {
-      const link = document.createElement('a');
-      link.download = `photobooth_${Date.now()}.jpg`;
-      link.href = canvas.toDataURL('image/jpeg', 0.9);
-      link.click();
-      statusEl.textContent = '💾 Foto tersimpan di Downloads!';
-    });
+    // ==================== DOWNLOAD & PRINT ====================
+    function downloadPhoto() {
+      try {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const link = document.createElement('a');
+        link.download = `photobooth_${Date.now()}.jpg`;
+        link.href = dataUrl;
+        link.click();
+        statusEl.textContent = '💾 Foto berhasil didownload!';
+      } catch (error) {
+        console.error('Download error:', error);
+        statusEl.textContent = '❌ Gagal download';
+      }
+    }
 
-    // Print
-    btnPrint.addEventListener('click', () => {
-      const win = window.open('', '_blank');
-      win.document.write(`<img src="${canvas.toDataURL('image/jpeg', 0.9)}" style="max-width:100%;height:auto;">`);
-      win.document.close();
-      setTimeout(() => { win.print(); win.close(); }, 500);
-    });
+    function printPhoto() {
+      try {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head><title>Cetak Foto</title></head>
+          <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;">
+            <img src="${dataUrl}" style="max-width:100%;max-height:100%;">
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 500);
+        statusEl.textContent = '🖨️ Membuka dialog cetak...';
+      } catch (error) {
+        console.error('Print error:', error);
+        statusEl.textContent = '❌ Gagal cetak';
+      }
+    }
 
-    // Retake
-    btnRetake.addEventListener('click', () => {
-      photos = [];
-      currentPhotoIndex = 0;
-      btnStart.disabled = false;
-      showScreen('camera');
-      statusEl.textContent = 'Siap sesi baru.';
-    });
+    // ==================== EVENT LISTENERS ====================
+    function setupEventListeners() {
+      btnPay.addEventListener('click', handlePayment);
+      
+      btnDemo.addEventListener('click', () => {
+        if (confirm('Mode Demo: Lewati pembayaran?')) {
+          showScreen('camera');
+          btnStart.disabled = false;
+          statusEl.textContent = '🧪 MODE DEMO - Pembayaran dilewati';
+        }
+      });
 
-    function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+      btnStart.addEventListener('click', startCaptureSession);
+      btnDownload.addEventListener('click', downloadPhoto);
+      btnPrint.addEventListener('click', printPhoto);
+      
+      btnRetake.addEventListener('click', () => {
+        if (confirm('Ulangi sesi foto dari awal?')) {
+          photos = [];
+          showScreen('camera');
+          btnStart.disabled = false;
+          statusEl.textContent = '📸 Siap mengambil foto';
+        }
+      });
+    }
+
+    // ==================== UTILITY ====================
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Start app
+    init();
   </script>
 </body>
 </html>
